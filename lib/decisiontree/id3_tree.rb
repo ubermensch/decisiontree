@@ -48,7 +48,7 @@ module DecisionTree
       # Remove samples with same attributes leaving most common classification
       data2 = data.inject({}) {|hash, d| hash[d.slice(0..-2)] ||= Hash.new(0); hash[d.slice(0..-2)][d.last] += 1; hash }.map{|key,val| key + [val.sort_by{ |k, v| v }.last.first]}
 
-      @tree = id3_train(data2, attributes, default)
+      @tree = id3_train(data2, 0, attributes, default)
     end
 
     def type(attribute)
@@ -62,7 +62,8 @@ module DecisionTree
       end
     end
 
-    def id3_train(data, attributes, default, used={})
+    def id3_train(data, depth, attributes, default, used={})
+      puts "       - id3_train depth: #{depth}"
       return default if data.empty?
 
       # return classification if all examples have the same classification
@@ -85,13 +86,14 @@ module DecisionTree
       case type(best.attribute)
         when :continuous
           data.partition { |d| d[attributes.index(best.attribute)] >= best.threshold }.each_with_index  { |examples, i|
-            tree[best][String.new(l[i])] = id3_train(examples, attributes, (data.classification.mode rescue 0), &fitness)
+            tree[best][String.new(l[i])] = id3_train(examples, depth+1, attributes, (data.classification.mode rescue 0), &fitness)
           }
         when :discrete
           values = data.collect { |d| d[attributes.index(best.attribute)] }.uniq.sort
           partitions = values.collect { |val| data.select { |d| d[attributes.index(best.attribute)] == val } }
+          puts partitions.size
           partitions.each_with_index  { |examples, i|
-            tree[best][values[i]] = id3_train(examples, attributes-[values[i]], (data.classification.mode rescue 0), &fitness)
+            tree[best][values[i]] = id3_train(examples, depth+1, attributes-[values[i]], (data.classification.mode rescue 0), &fitness)
           }
         end
 
